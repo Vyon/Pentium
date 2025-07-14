@@ -85,6 +85,8 @@ local function getHighlight(tokens, index)
 
 		return colors.local_property
 	end
+
+	return nil
 end
 
 function highlighter.run(source)

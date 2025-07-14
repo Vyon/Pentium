@@ -11,6 +11,8 @@ local ActivateMode = ActivateModes.Startup
 local DelModes = { Destroy = 1, Hide = 2 }
 local DelMode = DelModes.Destroy
 
+local Execution = require(script.Modules.Execution)
+
 local CreateMessage = require(script.Modules.Log).DisplayMessage
 local CreateDraggable = require(script.Modules.DraggableObject).new
 
@@ -22,22 +24,11 @@ local SyntaxHighlight = require(script.Modules.Highlighting).run
 
 local Crawl = require(script.Modules.Autocomplete).CrawlForDescendents
 
-local PentiumClientLoadCode = require(script.Modules.vLuau)
-local PentiumLoadCode = function(stuff: string)
-	game.ReplicatedStorage.PentiumExecute:FireServer(stuff, "SupaS!CURE!100.253#9ui00we78ht0spdvn540PT")
-end
-
 local function CursorBlink()
 	while true do
 		Pentium.Main.Cursor.Visible = not Pentium.Main.Cursor.Visible
 		task.wait(0.4)
 	end
-end
-
-local CurrentRunContext = PentiumLoadCode
-
-local function newline(str: string)
-	return string.format("%s\n", str)
 end
 
 -- uses \n with string.split to determine the best guess for cursor position
@@ -62,6 +53,9 @@ function CursorPosition(content: string, cursor_index: number)
 				break
 			end
 		end
+	elseif cursor_index < 0 then
+		-- When the player unfocuses the textbox CursorPosition is set to -1 or in this context -2
+		return
 	end
 
 	local line = split[y]
@@ -86,6 +80,11 @@ local function UpdateCursor()
 	--:::::
 
 	local CursorX, CursorY = CursorPosition(Pentium.Main.RawInput.Text, Pentium.Main.RawInput.CursorPosition)
+
+	-- Prevents issues when the input is unfocused.
+	if not CursorX or not CursorY then
+		return
+	end
 
 	Pentium.Main.Cursor.Position = UDim2.fromOffset(CursorX, CursorY)
 
@@ -129,7 +128,7 @@ local function UpdateText()
 	Pentium.Main.LineNumbers.Text = ""
 
 	for i = 1, count + 1 do
-		Pentium.Main.LineNumbers.Text = Pentium.Main.LineNumbers.Text .. newline(tostring(i))
+		Pentium.Main.LineNumbers.Text = `{Pentium.Main.LineNumbers.Text}{i}\n`
 	end
 
 	UpdateAC()
@@ -156,8 +155,25 @@ local function Start()
 	CreateContextMenuButton("File", "Quit", Quit)
 	Pentium.Main.Topbar.QuitButton.MouseButton1Click:Connect(Quit)
 
+	local ContextButton
+
+	ContextButton = CreateContextMenuButton("Code", `Context: {Execution.Context}`, function()
+		local Label = ContextButton.TextLabel
+
+		local NewContext = Label.Text:gsub("Context: ", "") == "Client" and "Server" or "Client"
+
+		Execution.Context = NewContext
+
+		ContextButton.TextLabel.Text = `Context: {NewContext}`
+		ContextButton.TextLabel.TextColor3 = Execution.Colors[Execution.Context]
+	end)
+
+	if ContextButton then --> If the template is not found the function returns nil
+		ContextButton.TextLabel.TextColor3 = Execution.Colors[Execution.Context]
+	end
+
 	CreateContextMenuButton("Code", "Run", function()
-		CurrentRunContext(Pentium.Main.RawInput.Text)
+		Execution.Run(Pentium.Main.RawInput.Text)
 	end)
 
 	CreateContextMenuButton("Help", "About Pentium", function()

@@ -33,9 +33,9 @@ local function Contains(s: string, t: {}): boolean
 	return false
 end
 
-function Autocomplete.CrawlForDescendents(obj: Instance): {Instance}
-	coroutine.wrap(function()
-		for idx, inst: Instance in obj:GetDescendants() do
+function Autocomplete.CrawlForDescendents(obj: Instance)
+	task.defer(function()
+		for _, inst: Instance in obj:GetDescendants() do
 			if Contains(inst:GetFullName(), {"\\", "/", "Service"}) or Contains(inst:GetFullName():split(".")[1], {"game"}) then continue end
 
 			local path = inst:GetFullName():split('.')
@@ -57,7 +57,7 @@ function Autocomplete.CrawlForDescendents(obj: Instance): {Instance}
 				end
 			end
 		end
-	end)()
+	end)
 end
 
 local function ObjectsInPath(p: string): {}
@@ -90,28 +90,6 @@ local function GetAllObjectsWithPattern(search: string): {}
 	end
 	
 	return all
-end
-
-local function Slct_GetAllObjectsWithPattern(tbl: {}, search: string): {}
-	local all = {}
-
-	for parent, lkTabl in tbl do
-		for _, obj in lkTabl do
-			if string.sub(obj[1], 1, #search):lower() == search:lower() then
-				table.insert(all, obj)
-			end
-		end
-	end
-
-	return all
-end
-
-local function GetKeyword(name: string)
-	for keywordGroup, keywordDefinitions in Autocomplete.Keywords do
-		if table.find(keywordDefinitions, name) then
-			return {name, keywordGroup}
-		end
-	end
 end
 
 local function LastWordInCode()

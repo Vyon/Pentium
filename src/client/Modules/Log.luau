@@ -2,7 +2,7 @@ local Log = {}
 
 Log.Script = script.Parent.Parent
 
-function Log.DisplayMessage(title: string, content: string, buttons: {string}, plr: Player): string
+function Log.DisplayMessage(title: string, content: string, buttons: {string}, plr: Player)
 	if plr == nil then
 		plr = game.Players.LocalPlayer
 	end
