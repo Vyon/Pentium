@@ -4,6 +4,7 @@ local PentiumVersion = "1.0.0"
 local ActivateButton: GuiButton = nil
 
 local TextService = game:GetService("TextService")
+local TweenService = game:GetService("TweenService")
 
 local ActivateModes = { Startup = 1, Button = 2 }
 local ActivateMode = ActivateModes.Startup
@@ -11,18 +12,18 @@ local ActivateMode = ActivateModes.Startup
 local DelModes = { Destroy = 1, Hide = 2 }
 local DelMode = DelModes.Destroy
 
+local Config = require(script.Config)
+local Log = require(script.Modules.Log)
 local Execution = require(script.Modules.Execution)
+local ContextMenu = require(script.Modules.ContextMenu)
+local AutoComplete = require(script.Modules.Autocomplete)
+local Draggable = require(script.Modules.DraggableObject)
 
-local CreateMessage = require(script.Modules.Log).DisplayMessage
-local CreateDraggable = require(script.Modules.DraggableObject).new
-
-local CreateContextMenu = require(script.Modules.ContextMenu).CreateContextMenu
-local CreateContextMenuButton = require(script.Modules.ContextMenu).CreateContextMenuButton
-
-local UpdateAC = require(script.Modules.Autocomplete).Update
 local SyntaxHighlight = require(script.Modules.Highlighting).run
 
-local Crawl = require(script.Modules.Autocomplete).CrawlForDescendents
+-- Functions:
+local CreateContextMenu = ContextMenu.CreateContextMenu
+local CreateContextMenuButton = ContextMenu.CreateContextMenuButton
 
 local function CursorBlink()
 	while true do
@@ -71,14 +72,6 @@ function CursorPosition(content: string, cursor_index: number)
 end
 
 local function UpdateCursor()
-	--::::: legacy cursor position code, see CursorPosition function above for current version
-	-- local ScaleX = (Pentium.Main.RawInput.TextBounds.X / Pentium.Main.RawInput.AbsoluteSize.X)
-	-- local ScaleY = (Pentium.Main.RawInput.TextBounds.Y / Pentium.Main.RawInput.AbsoluteSize.Y)
-
-	-- changed Y by 25 to account for the topbar.
-	-- Pentium.Main.Cursor.Position = UDim2.new(ScaleX, 25, ScaleY, 14)
-	--:::::
-
 	local CursorX, CursorY = CursorPosition(Pentium.Main.RawInput.Text, Pentium.Main.RawInput.CursorPosition)
 
 	-- Prevents issues when the input is unfocused.
@@ -86,7 +79,13 @@ local function UpdateCursor()
 		return
 	end
 
-	Pentium.Main.Cursor.Position = UDim2.fromOffset(CursorX, CursorY)
+	if Config.Editor.SmoothCursor.Enabled then
+		TweenService:Create(Pentium.Main.Cursor, TweenInfo.new(Config.Editor.SmoothCursor.Speed), {
+			Position = UDim2.fromOffset(CursorX, CursorY),
+		}):Play()
+	else
+		Pentium.Main.Cursor.Position = UDim2.fromOffset(CursorX, CursorY)
+	end
 
 	Pentium.Main.KeywordHint.Position = UDim2.new(
 		Pentium.Main.Cursor.Position.X.Scale,
@@ -131,13 +130,13 @@ local function UpdateText()
 		Pentium.Main.LineNumbers.Text = `{Pentium.Main.LineNumbers.Text}{i}\n`
 	end
 
-	UpdateAC()
+	AutoComplete.Update()
 end
 
 local function Start()
 	Pentium.Splash.Visible = true
 
-	CreateDraggable(Pentium.Main, Pentium.Main.Topbar):Enable()
+	Draggable.new(Pentium.Main, Pentium.Main.Topbar):Enable()
 
 	CreateContextMenu("File")
 	CreateContextMenu("Code")
@@ -177,13 +176,13 @@ local function Start()
 	end)
 
 	CreateContextMenuButton("Help", "About Pentium", function()
-		CreateMessage("About Pentium", [[Pentium Text Editor
+		Log.DisplayMessage("About Pentium", [[Pentium Text Editor
 			Version ]] .. PentiumVersion .. [[
 			(C) Copyright 2025 SirKingBinx
 		]])
 	end)
 
-	Crawl(game)
+	AutoComplete.CrawlForDescendents(game)
 
 	UpdateText()
 	UpdateCursor()
