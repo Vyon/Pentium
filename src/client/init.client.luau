@@ -8,7 +8,7 @@ local TextService = game:GetService("TextService")
 local ActivateModes = { Startup = 1, Button = 2 }
 local ActivateMode = ActivateModes.Startup
 
-local DelModes =  {Destroy = 1, Hide = 2}
+local DelModes = { Destroy = 1, Hide = 2 }
 local DelMode = DelModes.Destroy
 
 local CreateMessage = require(script.Modules.Log).DisplayMessage
@@ -36,7 +36,7 @@ end
 
 local CurrentRunContext = PentiumLoadCode
 
-local newline = function(str: string)
+local function newline(str: string)
 	return string.format("%s\n", str)
 end
 
@@ -55,15 +55,74 @@ function CursorPosition(content: string)
 	end
 end
 
+local function UpdateCursor()
+	--::::: legacy cursor position code, see CursorPosition function above for current version
+	-- local ScaleX = (Pentium.Main.RawInput.TextBounds.X / Pentium.Main.RawInput.AbsoluteSize.X)
+	-- local ScaleY = (Pentium.Main.RawInput.TextBounds.Y / Pentium.Main.RawInput.AbsoluteSize.Y)
+
+	-- changed Y by 25 to account for the topbar.
+	-- Pentium.Main.Cursor.Position = UDim2.new(ScaleX, 25, ScaleY, 14)
+	--:::::
+
+	local CursorX, CursorY = CursorPosition(Pentium.Main.RawInput.Text)
+
+	Pentium.Main.Cursor.Position = UDim2.fromOffset(CursorX, CursorY)
+
+	Pentium.Main.KeywordHint.Position = UDim2.new(
+		Pentium.Main.Cursor.Position.X.Scale,
+		Pentium.Main.Cursor.Position.X.Offset,
+		Pentium.Main.Cursor.Position.Y.Scale,
+		Pentium.Main.Cursor.Position.Y.Offset + 16
+	)
+end
+
+local function UpdateText()
+	Pentium.Main.StyleInput.Text = SyntaxHighlight(Pentium.Main.RawInput.Text)
+
+	local Last = string.sub(Pentium.Main.RawInput.Text, -1)
+	Last = string
+		.lower(Last)
+		:gsub("%%", "%%%%")
+		:gsub("^%^", "%%^")
+		:gsub("%$$", "%%$")
+		:gsub("%(", "%%(")
+		:gsub("%)", "%%)")
+		:gsub("%.", "%%.")
+		:gsub("%[", "%%[")
+		:gsub("%]", "%%]")
+		:gsub("%*", "%%*")
+		:gsub("%+", "%%+")
+		:gsub("%-", "%%-")
+		:gsub("%?", "%%?")
+
+	if Last then
+		local Chars = "abcdefghijklmnopqrstuvwxyz1234567890."
+		local LastCharIsChar = Last ~= "" and string.find(Chars, Last)
+		Pentium.Main.KeywordHint.Visible = LastCharIsChar or false
+	else
+		Pentium.Main.KeywordHint.Visible = false
+	end
+
+	local _, count = Pentium.Main.RawInput.Text:gsub("\n", "\n")
+
+	Pentium.Main.LineNumbers.Text = ""
+
+	for i = 1, count + 1 do
+		Pentium.Main.LineNumbers.Text = Pentium.Main.LineNumbers.Text .. newline(tostring(i))
+	end
+
+	UpdateAC()
+end
+
 local function Start()
 	Pentium.Splash.Visible = true
-	
+
 	CreateDraggable(Pentium.Main, Pentium.Main.Topbar):Enable()
 
 	CreateContextMenu("File")
 	CreateContextMenu("Code")
 	CreateContextMenu("Help")
-	
+
 	local function Quit()
 		if DelMode == DelModes.Hide then
 			Pentium.Main.Visible = false
@@ -71,88 +130,36 @@ local function Start()
 			Pentium:Destroy()
 		end
 	end
-	
+
 	-- Quit buttons
 	CreateContextMenuButton("File", "Quit", Quit)
 	Pentium.Main.Topbar.QuitButton.MouseButton1Click:Connect(Quit)
-	
+
 	CreateContextMenuButton("Code", "Run", function()
 		CurrentRunContext(Pentium.Main.RawInput.Text)
 	end)
-	
+
 	CreateContextMenuButton("Help", "About Pentium", function()
-		CreateMessage("About Pentium"
-			, [[Pentium Text Editor
+		CreateMessage("About Pentium", [[Pentium Text Editor
 			Version ]] .. PentiumVersion .. [[
 			(C) Copyright 2025 SirKingBinx
 		]])
 	end)
-	
+
 	Crawl(game)
-	
-	Pentium.Main.RawInput.Changed:Connect(function(property: string)
-		if property == "Text" then
-			Pentium.Main.StyleInput.Text = SyntaxHighlight(Pentium.Main.RawInput.Text)
-		end
-		
-		--::::: legacy cursor position code, see CursorPosition function above for current version
-		-- local ScaleX = (Pentium.Main.RawInput.TextBounds.X / Pentium.Main.RawInput.AbsoluteSize.X)
-		-- local ScaleY = (Pentium.Main.RawInput.TextBounds.Y / Pentium.Main.RawInput.AbsoluteSize.Y)
-		
-		-- changed Y by 25 to account for the topbar.
-		-- Pentium.Main.Cursor.Position = UDim2.new(ScaleX, 25, ScaleY, 14)
-		--:::::
-		
-		local CursorX, CursorY = CursorPosition(Pentium.Main.RawInput.Text)
-		
-		Pentium.Main.Cursor.Position = UDim2.fromOffset(CursorX, CursorY)
-		
-		Pentium.Main.KeywordHint.Position = UDim2.new(
-			Pentium.Main.Cursor.Position.X.Scale, 
-			Pentium.Main.Cursor.Position.X.Offset, 
-			Pentium.Main.Cursor.Position.Y.Scale, 
-			Pentium.Main.Cursor.Position.Y.Offset + 16
-		)
-		
-		local Last = string.sub(Pentium.Main.RawInput.Text, -1)
-		Last = string.lower(Last):gsub('%%', '%%%%')
-			:gsub('^%^', '%%^')
-			:gsub('%$$', '%%$')
-			:gsub('%(', '%%(')
-			:gsub('%)', '%%)')
-			:gsub('%.', '%%.')
-			:gsub('%[', '%%[')
-			:gsub('%]', '%%]')
-			:gsub('%*', '%%*')
-			:gsub('%+', '%%+')
-			:gsub('%-', '%%-')
-			:gsub('%?', '%%?')
-		
-		if Last then
-			local Chars = "abcdefghijklmnopqrstuvwxyz1234567890."
-			local LastCharIsChar = Last ~= "" and string.find(Chars, Last)
-			Pentium.Main.KeywordHint.Visible = LastCharIsChar or false
-		else
-			Pentium.Main.KeywordHint.Visible = false
-		end
-		
-		local _, count = Pentium.Main.RawInput.Text:gsub('\n', '\n')
-		
-		Pentium.Main.LineNumbers.Text = ""
-		
-		for i = 1, count + 1 do
-			Pentium.Main.LineNumbers.Text = Pentium.Main.LineNumbers.Text .. newline(tostring(i))
-		end
-		
-		UpdateAC()
-	end)
-	
+
+	UpdateText()
+	UpdateCursor()
+
+	Pentium.Main.RawInput:GetPropertyChangedSignal("Text"):Connect(UpdateText)
+	Pentium.Main.RawInput:GetPropertyChangedSignal("CursorPosition"):Connect(UpdateCursor)
+
 	coroutine.wrap(CursorBlink)()
-	
+
 	task.wait(2)
-	
+
 	Pentium.Splash.Visible = false
-	
+
 	Pentium.Main.Visible = true
 end
 
