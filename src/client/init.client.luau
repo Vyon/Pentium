@@ -41,17 +41,38 @@ local function newline(str: string)
 end
 
 -- uses \n with string.split to determine the best guess for cursor position
-function CursorPosition(content: string)
-	local _, lineCount = Pentium.Main.RawInput.Text:gsub('\n', '\n')
-	
-	local split = content:split('\n')
-	local last = split[#split] or ""
-	
-	if last == "" then
-		return 30, (lineCount * 16) + 30
+function CursorPosition(content: string, cursor_index: number)
+	cursor_index -= 1
+
+	local RawInput = Pentium.Main.RawInput
+	local x, y = 0, 1
+
+	local split = content:split("\n")
+
+	if cursor_index > 0 then
+		for index, char in content:split("") do
+			if char == "\n" then
+				y += 1
+				x = 0
+			else
+				x += 1
+			end
+
+			if index == cursor_index then
+				break
+			end
+		end
+	end
+
+	local line = split[y]
+
+	if line and line ~= "" then
+		local line_width =
+			TextService:GetTextSize(line:sub(1, x), RawInput.TextSize, RawInput.Font, RawInput.AbsoluteSize)
+
+		return line_width.X + 30, ((y - 1) * 16) + 30
 	else
-		local LineWidth = TextService:GetTextSize(last, Pentium.Main.RawInput.TextSize, Pentium.Main.RawInput.Font, Pentium.Main.RawInput.AbsoluteSize)
-		return LineWidth.X + 30, (lineCount * 16) + 30
+		return 30, ((y - 1) * 16) + 30
 	end
 end
 
@@ -64,7 +85,7 @@ local function UpdateCursor()
 	-- Pentium.Main.Cursor.Position = UDim2.new(ScaleX, 25, ScaleY, 14)
 	--:::::
 
-	local CursorX, CursorY = CursorPosition(Pentium.Main.RawInput.Text)
+	local CursorX, CursorY = CursorPosition(Pentium.Main.RawInput.Text, Pentium.Main.RawInput.CursorPosition)
 
 	Pentium.Main.Cursor.Position = UDim2.fromOffset(CursorX, CursorY)
 
