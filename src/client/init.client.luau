@@ -26,8 +26,20 @@ local CreateContextMenu = ContextMenu.CreateContextMenu
 local CreateContextMenuButton = ContextMenu.CreateContextMenuButton
 
 local function CursorBlink()
+	local CursorRef = Pentium.Main.Cursor
+	local InputRef = Pentium.Main.RawInput
+
+	local LastPosition = InputRef.CursorPosition
+
 	while true do
-		Pentium.Main.Cursor.Visible = not Pentium.Main.Cursor.Visible
+		if LastPosition == InputRef.CursorPosition then
+			CursorRef.Visible = not CursorRef.Visible
+		else
+			CursorRef.Visible = true
+		end
+
+		LastPosition = InputRef.CursorPosition
+
 		task.wait(0.4)
 	end
 end
